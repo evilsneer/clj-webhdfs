@@ -7,7 +7,6 @@ A Clojure library designed to webhdfs.
 At first set:
 
     export WEBHDFS="http://ng-dmp-hdp-m-1:50070"
-    export TMP_FOLDER="/tmp/"
 
 & Use as lib =)
 
