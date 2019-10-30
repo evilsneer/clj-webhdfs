@@ -1,9 +1,10 @@
-(defproject emptyone/webhdfs "1.0.0-SNAPSHOT"
+(defproject emptyone/webhdfs "1.0.0"
   :description "Clojure webhdfs lib using org.httpkit.client"
   :url "https://github.com/evilsneer/clj-webhdfs"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url  "https://www.eclipse.org/legal/epl-2.0/"}
-  :deploy-repositories ^:replace [["releases" "scp://root@10.20.30.111/root/rel/"]
+  :deploy-repositories ^:replace [["releases" {:url           "scp://root@10.20.30.111/root/rel/"
+                                               :sign-releases false}]
                                   ["snapshots" "scp://root@10.20.30.111/root/snap/"]]
 
   :dependencies [[org.clojure/clojure "1.10.0"]
