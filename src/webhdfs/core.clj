@@ -57,12 +57,11 @@
        {:body data})))
 
 (defn open
-  ([path & opts]
-   (let [file (@(httpcl/get
-                  (str @webhdfs-v1 path)
-                  {:query-params {:op "OPEN"}})
-                :body)]
-     (apply slurp file opts))))
+  ([path]
+   (@(httpcl/get
+       (str @webhdfs-v1 path)
+       {:query-params {:op "OPEN"}})
+     :body)))
 
 (defn delete [path]
   (request httpcl/delete path {:op        "DELETE"

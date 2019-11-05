@@ -33,7 +33,7 @@
 
 (deftest test-open-file
   (testing "OPEN created file, check content"
-    (is (= test-content (open (str temp-dir test-filename))))))
+    (is (= test-content (slurp (open (str temp-dir test-filename)))))))
 
 (deftest test-delete
   (testing "DELETE dir"
