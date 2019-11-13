@@ -47,7 +47,7 @@
 (defn ls [path]
   #_(request httpcl/get path {:op "LISTSTATUS"})
   (request2 chc/get path {:op "LISTSTATUS"})
-  #_(chc/get path ))
+  #_(chc/get path))
 
 (defn short-ls [path]
   (->>
@@ -73,13 +73,15 @@
 (defn open
   ([path]
    #_(@(httpcl/get
-       (str @webhdfs-v1 path)
-       {:query-params {:op "OPEN"}})
-     :body)
-   (chc/get
+         (str @webhdfs-v1 path)
+         {:query-params {:op "OPEN"}})
+       :body)
+   (->
      (str @webhdfs-v1 path)
-     {:query-params {:op "OPEN"}
-      :as :stream})))
+     (chc/get
+       {:query-params {:op "OPEN"}
+        :as           :stream})
+     :body)))
 
 (defn delete [path]
   (request httpcl/delete path {:op        "DELETE"
