@@ -13,6 +13,7 @@
                  [org.clojure/tools.logging "0.4.1"]
                  [environ "1.1.0"]
                  [http-kit "2.3.0"]
+                 [clj-http "3.10.0"]
                  [org.clojure/data.json "0.2.6"]]
   :profiles {:uberjar {:aot :all}}
   :repl-options {:init-ns webhdfs.core})

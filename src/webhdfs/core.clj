@@ -5,7 +5,8 @@
     [org.httpkit.client :as httpcl]
     [environ.core :refer [env]]
     [clojure.java.shell :refer [sh]]
-    [clojure.data.json :as json])
+    [clojure.data.json :as json]
+    [clj-http.client :as chc])
   (:gen-class)
   (:import (java.util UUID)
            (java.rmi RemoteException)))
@@ -32,8 +33,21 @@
          true)
        (throw (or (:error resp) (-> resp :body #_(json/read-str :key-fn keyword) RemoteException.)))))))
 
+(defn request2
+  ([f path params]
+   (request2 f path params 200))
+  ([f path params wait-for-code]
+   (let [resp (f (str @webhdfs-v1 path) {:query-params params})]
+     (if (= wait-for-code (:status resp))
+       (or
+         (-> resp :body (json/read-str :key-fn keyword) :FileStatuses :FileStatus)
+         true)
+       (throw (or (:error resp) (-> resp :body #_(json/read-str :key-fn keyword) RemoteException.)))))))
+
 (defn ls [path]
-  (request httpcl/get path {:op "LISTSTATUS"}))
+  #_(request httpcl/get path {:op "LISTSTATUS"})
+  (request2 chc/get path {:op "LISTSTATUS"})
+  #_(chc/get path ))
 
 (defn short-ls [path]
   (->>
@@ -58,10 +72,14 @@
 
 (defn open
   ([path]
-   (@(httpcl/get
+   #_(@(httpcl/get
        (str @webhdfs-v1 path)
        {:query-params {:op "OPEN"}})
-     :body)))
+     :body)
+   (chc/get
+     (str @webhdfs-v1 path)
+     {:query-params {:op "OPEN"}
+      :as :stream})))
 
 (defn delete [path]
   (request httpcl/delete path {:op        "DELETE"
