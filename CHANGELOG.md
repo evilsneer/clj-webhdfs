@@ -5,6 +5,10 @@ All notable changes to this project will be documented in this file. This change
 ### Changed
 - 
 
+## [1.0.2] - 2019-10-30
+### Added
+- Change list and open to clj-http.
+
 ## [1.0.0] - 2019-10-30
 ### Added
 - Base webhdfs logic functions.
