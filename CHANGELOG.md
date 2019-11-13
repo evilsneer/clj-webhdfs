@@ -6,8 +6,8 @@ All notable changes to this project will be documented in this file. This change
 - 
 
 ## [1.0.2] - 2019-10-30
-### Added
-- Change list and open to clj-http.
+### Changed
+- List and open use clj-http now.
 
 ## [1.0.0] - 2019-10-30
 ### Added
