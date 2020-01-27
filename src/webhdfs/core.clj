@@ -2,14 +2,12 @@
   (:require
     [clojure.java.io :refer [make-parents delete-file]]
     [clojure.tools.logging :as log]
-    [org.httpkit.client :as httpcl]
     [environ.core :refer [env]]
     [clojure.java.shell :refer [sh]]
     [clojure.data.json :as json]
     [clj-http.client :as chc])
   (:gen-class)
-  (:import (java.util UUID)
-           (java.rmi RemoteException)))
+  (:import (java.rmi RemoteException)))
 
 
 (defn run-assertions []
@@ -20,34 +18,47 @@
   (log/info "SH>" cs)
   (log/info (apply sh cs)))
 
+(def username (env :webhdfs-user))
+
 (def webhdfs-v1 (atom (str (env :webhdfs) "/webhdfs/v1")))
 
-(defn request
-  ([f path params]
-   (request f path params 200))
-  ([f path params wait-for-code]
-   (let [resp @(f (str @webhdfs-v1 path) {:query-params params})]
-     (if (= wait-for-code (:status resp))
-       (or
-         (-> resp :body (json/read-str :key-fn keyword) :FileStatuses :FileStatus)
-         true)
-       (throw (or (:error resp) (-> resp :body #_(json/read-str :key-fn keyword) RemoteException.)))))))
+#_(defn request
+    ([f path params]
+     (request f path params 200))
+    ([f path params wait-for-code]
+     (let [resp @(f (str @webhdfs-v1 path) {:query-params params})]
+       (if (= wait-for-code (:status resp))
+         (or
+           (-> resp :body (json/read-str :key-fn keyword) :FileStatuses :FileStatus)
+           true)
+         (throw
+           (or
+             (:error resp)
+             (-> resp
+               :body
+               RemoteException.)))))))
 
 (defn request2
   ([f path params]
    (request2 f path params 200))
   ([f path params wait-for-code]
-   (let [resp (f (str @webhdfs-v1 path) {:query-params params})]
+   (let [resp (f (str @webhdfs-v1 path) {:query-params (merge
+                                                         params
+                                                         (if username {:user.name username}))})]
      (if (= wait-for-code (:status resp))
        (or
-         (-> resp :body (json/read-str :key-fn keyword) :FileStatuses :FileStatus)
+         (-> resp
+           :body
+           (json/read-str :key-fn keyword)
+           :FileStatuses
+           :FileStatus)
          true)
-       (throw (or (:error resp) (-> resp :body #_(json/read-str :key-fn keyword) RemoteException.)))))))
+       (throw (or (:error resp) (-> resp
+                                  :body
+                                  RemoteException.)))))))
 
 (defn ls [path]
-  #_(request httpcl/get path {:op "LISTSTATUS"})
-  (request2 chc/get path {:op "LISTSTATUS"})
-  #_(chc/get path))
+  (request2 chc/get path {:op "LISTSTATUS"}))
 
 (defn short-ls [path]
   (->>
@@ -55,27 +66,25 @@
     (map :pathSuffix)))
 
 (defn mkdirs [path]
-  (request httpcl/put path {:op "MKDIRS"}))
+  (request2 chc/put path {:op "MKDIRS"}))
 
 (defn create [path data]
-  (let [resp @(httpcl/put
-                (str @webhdfs-v1 path)
-                {:follow-redirects false
-                 :query-params     {:op        "CREATE"
-                                    :overwrite "true"}})
+  (let [resp (chc/put
+               (str @webhdfs-v1 path)
+               {:follow-redirects false
+                :query-params     (merge
+                                    {:op        "CREATE"
+                                     :overwrite "true"}
+                                    (if username {:user.name username}))})
         uri  (-> resp
                :headers
                :location)]
-    @(httpcl/put
-       uri
-       {:body data})))
+    (chc/put
+      uri
+      {:body data})))
 
 (defn open
   ([path]
-   #_(@(httpcl/get
-         (str @webhdfs-v1 path)
-         {:query-params {:op "OPEN"}})
-       :body)
    (->
      (str @webhdfs-v1 path)
      (chc/get
@@ -84,8 +93,8 @@
      :body)))
 
 (defn delete [path]
-  (request httpcl/delete path {:op        "DELETE"
-                               :recursive "true"}))
+  (request2 chc/delete path {:op        "DELETE"
+                             :recursive "true"}))
 
 
 (run-assertions)

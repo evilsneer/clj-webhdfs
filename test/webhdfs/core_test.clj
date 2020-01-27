@@ -6,6 +6,8 @@
 (def temp-dir "/tmp/")
 (def dir-name "webhdfs-test-dir")
 (def test-filename "testdata.csv")
+(def dir-path (str temp-dir dir-name "/"))
+(def file-path (str temp-dir test-filename))
 
 (def test-content
   (-> test-filename
@@ -22,24 +24,31 @@
 
 (deftest test-mkdir
   (testing "MKDIR creates dir"
-    (let [path (str temp-dir dir-name "/")]
-      (mkdirs path)
-      (is (temp-has? dir-name)))))
+    (mkdirs dir-path)
+    (is (temp-has? dir-name))))
 
 (deftest test-create-file
   (testing "CREATE creates file"
-    (create (str temp-dir test-filename) test-content)
-    (is (temp-has? test-filename))))
+    (create file-path test-content)
+    (is (temp-has? test-filename))
+    (testing "file user as in ENV"
+      (if (some? username)
+        (is (=
+              username
+              (->> file-path
+                ls
+                first
+                :owner)))))))
 
 (deftest test-open-file
   (testing "OPEN created file, check content"
-    (is (= test-content (slurp (open (str temp-dir test-filename)))))))
+    (is (= test-content (slurp (open file-path))))))
 
 (deftest test-delete
   (testing "DELETE dir"
-    (delete (str temp-dir dir-name))
+    (delete dir-path)
     (is (not (temp-has? dir-name))))
   (testing "DELETE file"
-    (delete (str temp-dir test-filename))
+    (delete file-path)
     (is (not (temp-has? test-filename)))))
 
