@@ -88,7 +88,9 @@
    (->
      (str @webhdfs-v1 path)
      (chc/get
-       {:query-params {:op "OPEN"}
+       {:query-params (merge
+                        {:op "OPEN"}
+                        (if username {:user.name username}))
         :as           :stream})
      :body)))
 
