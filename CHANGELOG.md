@@ -1,6 +1,11 @@
 # Change Log
 All notable changes to this project will be documented in this file. This change log follows the conventions of [keepachangelog.com](http://keepachangelog.com/).
 
+
+## [1.0.6]
+### Changed
+- multiple url handling fixes.
+
 ## [1.0.5]
 ### Added
 - multiple url handling for ls requests.
