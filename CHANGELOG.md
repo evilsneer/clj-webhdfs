@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file. This change
 
 ## [1.0.5]
 ### Added
-- multiple url handling.
+- multiple url handling for ls requests.
 
 ## [1.0.3]
 ### Added
