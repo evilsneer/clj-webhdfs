@@ -5,7 +5,9 @@
     [environ.core :refer [env]]
     [clojure.java.shell :refer [sh]]
     [clojure.data.json :as json]
-    [clj-http.client :as chc])
+    [clj-http.client :as chc]
+    [slingshot.slingshot :as slingshot]
+    [clojure.string :as str])
   (:gen-class)
   (:import (java.rmi RemoteException)))
 
@@ -20,42 +22,65 @@
 
 (def username (env :webhdfs-user))
 
-(def webhdfs-v1 (atom (str (env :webhdfs) "/webhdfs/v1")))
+(def webhdfs-env (env :webhdfs))
 
-#_(defn request
-    ([f path params]
-     (request f path params 200))
-    ([f path params wait-for-code]
-     (let [resp @(f (str @webhdfs-v1 path) {:query-params params})]
-       (if (= wait-for-code (:status resp))
+(defn format- [url]
+  (str url "/webhdfs/v1"))
+
+(def a-webhdfs-v1s (let [urls (str/split webhdfs-env #",")]
+                     (atom (map format- urls))))
+
+(defn ^:deprecated request
+  ([f path params]
+   (request f path params 200))
+  ([f path params wait-for-code]
+   (let [resp @(f (str (first @a-webhdfs-v1s) path) {:query-params params})]
+     (if (= wait-for-code (:status resp))
+       (or
+         (-> resp :body (json/read-str :key-fn keyword) :FileStatuses :FileStatus)
+         true)
+       (throw
          (or
-           (-> resp :body (json/read-str :key-fn keyword) :FileStatuses :FileStatus)
-           true)
-         (throw
-           (or
-             (:error resp)
-             (-> resp
-               :body
-               RemoteException.)))))))
+           (:error resp)
+           (-> resp
+             :body
+             RemoteException.)))))))
 
 (defn request2
   ([f path params]
    (request2 f path params 200))
   ([f path params wait-for-code]
-   (let [resp (f (str @webhdfs-v1 path) {:query-params (merge
-                                                         params
-                                                         (if username {:user.name username}))})]
-     (if (= wait-for-code (:status resp))
-       (or
-         (-> resp
-           :body
-           (json/read-str :key-fn keyword)
-           :FileStatuses
-           :FileStatus)
-         true)
-       (throw (or (:error resp) (-> resp
-                                  :body
-                                  RemoteException.)))))))
+   (let [request-params {:query-params
+                         (merge
+                           params
+                           (if username {:user.name username}))}
+         resp-fn        #(f % request-params)]
+     (loop [webhdfs-urls @a-webhdfs-v1s]
+       (let [request-url (str (first webhdfs-urls) path)
+             success?    (atom true)
+             response    (atom nil)]
+         (slingshot/try+
+           (let [resp (resp-fn request-url)]
+             (if (not= wait-for-code (:status resp))
+               (throw (or
+                        (:error resp)
+                        (-> resp
+                          :body
+                          RemoteException.)))
+               (reset! response (or
+                                  (-> resp
+                                    :body
+                                    (json/read-str :key-fn keyword)
+                                    :FileStatuses
+                                    :FileStatus)
+                                  true))))
+           (catch [:status 403] _e
+             (reset! success? false)
+             (log/error (format "catched 403 with %s trying next uri" request-url))))
+         (if @success?
+           @response
+           (recur (drop 1 webhdfs-urls))))))
+   ))
 
 (defn ls [path]
   (request2 chc/get path {:op "LISTSTATUS"}))
@@ -70,7 +95,7 @@
 
 (defn create [path data]
   (let [resp (chc/put
-               (str @webhdfs-v1 path)
+               (str (first @a-webhdfs-v1s) path)
                {:follow-redirects false
                 :query-params     (merge
                                     {:op        "CREATE"
@@ -86,7 +111,7 @@
 (defn open
   ([path]
    (->
-     (str @webhdfs-v1 path)
+     (str (first @a-webhdfs-v1s) path)
      (chc/get
        {:query-params (merge
                         {:op "OPEN"}
