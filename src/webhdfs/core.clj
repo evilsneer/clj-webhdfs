@@ -74,9 +74,14 @@
                                     :FileStatuses
                                     :FileStatus)
                                   true))))
-           (catch [:status 403] _e
-             (reset! success? false)
-             (log/error (format "catched 403 with %s trying next uri" request-url))))
+           (catch [:status 403] e
+             (if (> (count webhdfs-urls) 1)
+               (do
+                 (log/error (format "catched 403 with %s trying next uri" request-url))
+                 (reset! success? false))
+               (do
+                 (log/error (format "catched 403 with %s no more urls" request-url))
+                 (slingshot/throw+ e)))))
          (if @success?
            @response
            (recur (drop 1 webhdfs-urls))))))
