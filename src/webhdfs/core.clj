@@ -32,8 +32,10 @@
   (let [urls (str/split webhdfs-env #",")]
     (map format- urls)))
 
+(defn reformat- [url]
+  (str/replace url #"webhdfs/v1$" ""))
 
-(def last-namenode:atom (atom (first webhdfs-url-list)))
+(def last-namenode:agent (agent (reformat- (first webhdfs-url-list))))
 
 
 (defn call-request-fn [request-fn success-code]
@@ -68,10 +70,11 @@
                            params
                            (if username {:user.name username}))}]
      (loop [webhdfs-urls webhdfs-url-list]
-       (let [request-url (str (first webhdfs-urls) path)
+       (let [webhdfs-url (first webhdfs-urls)
+             request-url (str webhdfs-url path)
              response    (slingshot/try+
                            (let [response (call-request-fn #(method-fn request-url request-params) success-code)]
-                             (swap! last-namenode:atom (constantly request-url))
+                             (send last-namenode:agent (constantly (reformat- webhdfs-url)))
                              response)
                            (catch [:status 403] e
                              (if (> (count webhdfs-urls) 1)
