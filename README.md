@@ -6,7 +6,11 @@ A Clojure library designed to webhdfs.
 
 At first set:
 
-    export WEBHDFS="http://ng-dmp-hdp-m-1:50070"
+    export WEBHDFS="http://dmp-1:50070"
+
+or
+    
+    export WEBHDFS="http://dmp-1:50070,http://dmp-2:50070"
     export WEBHDFS_USER="dr.who"
     
 & Use as lib =)
