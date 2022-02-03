@@ -1,4 +1,4 @@
-(defproject emptyone/webhdfs "1.0.8-SNAPSHOT"
+(defproject emptyone/webhdfs "1.0.8"
   :description "Clojure webhdfs lib using org.httpkit.client"
   :url "https://github.com/evilsneer/clj-webhdfs"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
@@ -15,7 +15,6 @@
                  [log4j/log4j "1.2.17"]
                  [org.clojure/tools.logging "1.2.4"]
                  [environ "1.2.0"]
-                 [http-kit "2.5.3"]
                  [clj-http "3.12.3"]
                  [org.clojure/data.json "2.4.0"]
                  [digest "1.4.10"]]

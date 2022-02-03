@@ -20,75 +20,74 @@
   (log/info "SH>" cs)
   (log/info (apply sh cs)))
 
-(def username (env :webhdfs-user))
-
-(def webhdfs-env (env :webhdfs))
-
 (defn format- [url]
   (str url "/webhdfs/v1"))
 
-(def a-webhdfs-v1s (let [urls (str/split webhdfs-env #",")]
-                     (atom (map format- urls))))
 
-(defn ^:deprecated request
-  ([f path params]
-   (request f path params 200))
-  ([f path params wait-for-code]
-   (let [resp @(f (str (first @a-webhdfs-v1s) path) {:query-params params})]
-     (if (= wait-for-code (:status resp))
-       (or
-         (-> resp :body (json/read-str :key-fn keyword) :FileStatuses :FileStatus)
-         true)
-       (throw
-         (or
-           (:error resp)
-           (-> resp
-             :body
-             RemoteException.)))))))
+(def ^:dynamic username (env :webhdfs-user))
 
-(defn request2
-  ([f path params]
-   (request2 f path params 200))
-  ([f path params wait-for-code]
+(def ^:dynamic webhdfs-env (env :webhdfs))
+
+(def ^:dynamic webhdfs-url-list
+  (let [urls (str/split webhdfs-env #",")]
+    (map format- urls)))
+
+
+(def last-namenode:atom (atom (first webhdfs-url-list)))
+
+
+(defn call-request-fn [request-fn success-code]
+  (let [resp   (request-fn)
+        status (:status resp)]
+    (if (not= success-code status)
+      (throw (or
+               (:error resp)
+               (-> resp
+                 :body
+                 RemoteException.)))
+      (let [response-body (-> resp
+                            :body
+                            (json/read-str :key-fn keyword))
+            file-status   (-> response-body
+                            :FileStatuses
+                            :FileStatus)]
+        (if-not file-status
+          (do
+            (log/info "No :FileStatus in response, returning true" {:response response-body
+                                                                    :status   status})
+            true)
+          file-status)))))
+
+
+(defn request
+  ([method-fn path params]
+   (request method-fn path params 200))
+  ([method-fn path params success-code]
    (let [request-params {:query-params
                          (merge
                            params
-                           (if username {:user.name username}))}
-         resp-fn        #(f % request-params)]
-     (loop [webhdfs-urls @a-webhdfs-v1s]
+                           (if username {:user.name username}))}]
+     (loop [webhdfs-urls webhdfs-url-list]
        (let [request-url (str (first webhdfs-urls) path)
-             success?    (atom true)
-             response    (atom nil)]
-         (slingshot/try+
-           (let [resp (resp-fn request-url)]
-             (if (not= wait-for-code (:status resp))
-               (throw (or
-                        (:error resp)
-                        (-> resp
-                          :body
-                          RemoteException.)))
-               (reset! response (or
-                                  (-> resp
-                                    :body
-                                    (json/read-str :key-fn keyword)
-                                    :FileStatuses
-                                    :FileStatus)
-                                  true))))
-           (catch [:status 403] e
-             (if (> (count webhdfs-urls) 1)
-               (do
-                 (log/error (format "catched 403 with %s trying next uri" request-url))
-                 (reset! success? false))
-               (do
-                 (log/error (format "catched 403 with %s no more urls" request-url))
-                 (slingshot/throw+ e)))))
-         (if @success?
-           @response
-           (recur (drop 1 webhdfs-urls))))))
-   ))
+             response    (slingshot/try+
+                           (let [response (call-request-fn #(method-fn request-url request-params) success-code)]
+                             (swap! last-namenode:atom (constantly request-url))
+                             response)
+                           (catch [:status 403] e
+                             (if (> (count webhdfs-urls) 1)
+                               (do
+                                 (log/error (format "catched 403 with %s trying next uri" request-url))
+                                 ::restart)
+                               (do
+                                 (log/error (format "catched 403 with %s no more urls" request-url))
+                                 (slingshot/throw+ e)))))]
+         (if-not (= response ::restart)
+           response
+           (recur (drop 1 webhdfs-urls))))))))
+
 
 (defn ls [path]
-  (request2 chc/get path {:op "LISTSTATUS"}))
+  (request chc/get path {:op "LISTSTATUS"}))
 
 (defn short-ls [path]
   (->>
@@ -96,11 +95,11 @@
     (map :pathSuffix)))
 
 (defn mkdirs [path]
-  (request2 chc/put path {:op "MKDIRS"}))
+  (request chc/put path {:op "MKDIRS"}))
 
 (defn create [path data]
   (let [resp (chc/put
-               (str (first @a-webhdfs-v1s) path)
+               (str (first @webhdfs-url-list) path)
                {:follow-redirects false
                 :query-params     (merge
                                     {:op        "CREATE"
@@ -116,7 +115,7 @@
 (defn open
   ([path]
    (->
-     (str (first @a-webhdfs-v1s) path)
+     (str (first @webhdfs-url-list) path)
      (chc/get
        {:query-params (merge
                         {:op "OPEN"}
@@ -125,7 +124,7 @@
      :body)))
 
 (defn delete [path]
-  (request2 chc/delete path {:op        "DELETE"
+  (request chc/delete path {:op         "DELETE"
                              :recursive "true"}))
 
 
