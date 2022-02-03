@@ -1,15 +1,15 @@
-(defproject emptyone/webhdfs "1.0.7"
+(defproject emptyone/webhdfs "1.0.8-SNAPSHOT"
   :description "Clojure webhdfs lib using org.httpkit.client"
   :url "https://github.com/evilsneer/clj-webhdfs"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
             :url  "https://www.eclipse.org/legal/epl-2.0/"}
   :plugins [[org.apache.maven.wagon/wagon-ssh-external "3.5.1"]]
-  ;:deploy-repositories ^:replace [["releases" {:url           "scp://root@10.20.30.111/root/rel/"
-  ;                                             :sign-releases false}]
-  ;                                ["snapshots" "scp://root@10.20.30.111/root/snap/"]]
+  :deploy-repositories ^:replace [["releases" {:url           "scp://root@10.20.30.111/root/rel/"
+                                               :sign-releases false}]
+                                  ["snapshots" "scp://root@10.20.30.111/root/snap/"]]
 
-  :deploy-repositories [["releases" {:sign-releases false :url "https://clojars.org/repo"}]
-                        ["snapshots" {:sign-releases false :url "https://clojars.org/repo"}]]
+  ;:deploy-repositories [["releases" {:sign-releases false :url "https://clojars.org/repo"}]
+  ;                      ["snapshots" {:sign-releases false :url "https://clojars.org/repo"}]]
 
   :dependencies [[org.clojure/clojure "1.10.3"]
                  [log4j/log4j "1.2.17"]
