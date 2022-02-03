@@ -14,7 +14,7 @@
 
 (defn run-assertions []
   (doseq [e [:webhdfs #_:tmp-folder]]
-    (assert (env e) (format "Set %s in envs!" e))))
+    (assert (env e) (format "WEBHDFS lib: Set %s in envs!" e))))
 
 (defn- sh+log [& cs]
   (log/info "SH>" cs)
